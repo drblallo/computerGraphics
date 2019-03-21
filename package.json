@@ -1,0 +1,23 @@
+{
+  "name": "assigments",
+  "version": "1.0.0",
+  "description": "uni project",
+  "main": "index.js",
+  "scripts": {
+    "test": "mocha",
+    "start": "node ./index.js",
+    "build": "browserify main.js -o bundle.js",
+    "watch": "watchify main.js -o bundle.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "browserify": "^16.2.3",
+    "chai": "^4.2.0",
+    "eslint": "^5.15.0",
+    "mocha": "^6.0.2",
+    "prettier": "1.16.4",
+    "uniq": "^1.0.1",
+    "watchify": "^3.11.1"
+  }
+}
