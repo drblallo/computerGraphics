@@ -2,10 +2,10 @@
   "name": "assigments",
   "version": "1.0.0",
   "description": "uni project",
-  "main": "index.js",
+  "main": "main.js",
   "scripts": {
     "test": "mocha",
-    "start": "node ./index.js",
+    "start": "node ./main.js",
     "build": "browserify main.js -o bundle.js",
     "watch": "watchify main.js -o bundle.js"
   },
