@@ -99,6 +99,10 @@ let utils = {
 		return(angle*Math.PI/180);
 	},
 
+	radToDeg: function(angle){
+		return((angle/Math.PI)*180);
+	},
+
 	identityMatrix: function() {
 		return [1,0,0,0,
 				0,1,0,0,
