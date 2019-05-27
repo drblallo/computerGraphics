@@ -3,9 +3,15 @@ const vs = `#version 300 es
 #define POSITION_LOCATION 0
 
 layout(location = POSITION_LOCATION) in vec3 in_pos;
+uniform mat4 modelToWorld;
+uniform mat4 worldToCamera;
+uniform mat4 cameraToScreen;
+
+out vec3 pos;
 
 void main() {
-	gl_Position = vec4(in_pos, 1); 
+	gl_Position = cameraToScreen * worldToCamera* modelToWorld * vec4(in_pos, 1); 
+	pos = in_pos;
 }`;
 
 // Fragment shader
@@ -13,9 +19,10 @@ const fs = `#version 300 es
 precision highp float;
 
 out vec4 color;
+in vec3 pos;
 
 void main() {
-	color = vec4(1, 0, 0, 1);
+	color = vec4(pos, 1);
 }`;
 
 const quad =
@@ -27,6 +34,7 @@ const quad =
 		-0.5, 0.5, 0.0,
 		0.5, 0.5, 0.0
 	]
+
 
 const index = 
 	[
@@ -92,20 +100,29 @@ let context =
 			return buffer_id;
 		}
 
-		this.defaultShader = function()
+
+		this.defaultShader = function(mesh, index, renderType)
 		{
 			let vShader = this.makeShader(vs, this.gl.VERTEX_SHADER);
 			let fShader = this.makeShader(fs, this.gl.FRAGMENT_SHADER);
 
 			let program = this.makeProgram(vShader, fShader);
+
 			gl.useProgram(program);
-			program.vertexPositionAttribute = this.gl.getAttribLocation(program, "in_pos");
+			program.vertexPositionAttribute = gl.getAttribLocation(program, "in_pos");
+			program.modelToWorldUniform = gl.getUniformLocation(program, "modelToWorld");
+			program.worldToCameraUniform = gl.getUniformLocation(program, "worldToCamera");
+			program.cameraToScreenUniform = gl.getUniformLocation(program, "cameraToScreen");
+			program.mesh = mesh;
+			program.index = index;
+			program.renderType = renderType;
+
 			this.gl.enableVertexAttribArray(program.vertexPositionAttribute);
-			program.vertexBuffer = this.createAndFillBufferObject(quad, gl.ARRAY_BUFFER);
+			program.vertexBuffer = this.createAndFillBufferObject(mesh, gl.ARRAY_BUFFER);
 			program.indexBuffer = this.createAndFillBufferIndexObject(index, gl.ELEMENT_ARRAY_BUFFER);
 			program.gl = this.gl;
 
-			program.onPreRender = function()
+			program.onPreRender = function(camera, renderObject)
 			{
 				let gl = this.gl;
 				gl.useProgram(this);
@@ -115,7 +132,11 @@ let context =
 				gl.vertexAttribPointer(this.vertexPositionAttribute, 3, gl.FLOAT, false, 0, 0);
 				gl.enableVertexAttribArray(this.vertexPositionAttribute);
 
-				gl.drawElements(gl.TRIANGLES, index.length, gl.UNSIGNED_SHORT, 0);
+				gl.uniformMatrix4fv(this.modelToWorldUniform, gl.FALSE, renderObject.modelToWorld());
+				gl.uniformMatrix4fv(this.worldToCameraUniform, gl.FALSE, camera.worldToCamera());
+				gl.uniformMatrix4fv(this.cameraToScreenUniform, gl.FALSE, camera.cameraToScreen);
+
+				gl.drawElements(this.renderType, this.index.length, gl.UNSIGNED_SHORT, 0);
 			}
 
 			program.onPostRender = function()
@@ -126,15 +147,63 @@ let context =
 			return program;
 		}
 
+		this.gridShader = function()
+		{
+			let lines = [];
+			for (let a = -10; a <= 10; a++)
+			{
+				lines.push(a);
+				lines.push(0);
+				lines.push(-10);
+				lines.push(a);
+				lines.push(0);
+				lines.push(10);
+
+				lines.push(-10);
+				lines.push(0);
+				lines.push(a);
+				lines.push(10);
+				lines.push(0);
+				lines.push(a);
+			}
+
+			let linesIndex = [];
+			for (let a = 0; a < lines.length/3; a++)
+			{
+				linesIndex.push(a);
+			}
+
+			return this.defaultShader(lines, linesIndex, this.gl.LINES);
+		}
+
 		this.defaultRenderer = function()
 		{
 			let renderer = new Object(); 
 			renderer.context = this;
-			renderer.shaderProgram = this.defaultShader();
+			renderer.shaderProgram = this.defaultShader(quad, index, this.gl.TRIANGLES);
 
-			renderer.onPreRender = function()
+			renderer.onPreRender = function(camera, renderObject)
 			{
-				this.shaderProgram.onPreRender();
+				this.shaderProgram.onPreRender(camera, renderObject);
+			}
+
+			renderer.onPostRender = function()
+			{
+				this.shaderProgram.onPostRender();
+			}
+			return renderer;	
+
+		}
+
+		this.gridRenderer = function()
+		{
+			let renderer = new Object(); 
+			renderer.context = this;
+			renderer.shaderProgram = this.gridShader();
+
+			renderer.onPreRender = function(camera, renderObject)
+			{
+				this.shaderProgram.onPreRender(camera, renderObject);
 			}
 
 			renderer.onPostRender = function()

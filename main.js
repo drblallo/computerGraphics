@@ -3,17 +3,19 @@ let view = require('./src/view.js');
 let context = require("./context.js")
 let utils = require("./src/lib/utils.js")
 let renderObject = require("./src/lib/renderObject.js")
-
-console.log("hey");
+let camera = require("./src/lib/camera.js")
 
 let renderObjects = [];
-let perspectiveMatrix;
+let cam;
+
+let quad;
 
 function draw()
 {
 	for (let a = 0; a < renderObjects.length; a++)	
 	{
-		renderObjects[a].onPreRender();
+		//quad.trasform.rotate(1, 0, 0);
+		renderObjects[a].onPreRender(cam);
 		
 		renderObjects[a].onPostRender();
 	}
@@ -23,7 +25,6 @@ function draw()
 
 function main()
 {
-	console.log("hey again");
 	view.view();
 	const canvas = document.getElementById("my-canvas");
 	const gl = canvas.getContext("webgl2");
@@ -36,10 +37,15 @@ function main()
 	gl.viewport(0.0, 0.0, w, h);
 	gl.clear(gl.COLOR_BUFFER_BIT);
 
-	perspectiveMatrix = utils.MakePerspective(60, w/h, 0.1, 1000.0);
+	cam = new camera.MakeCamera(w, h);
 	gl.enable(gl.DEPTH_TEST);
 
-	renderObjects.push(new renderObject.MakeRenderObject(c));
+	quad = new renderObject.MakeRenderObject(c, c.defaultRenderer(), null);
+	renderObjects.push(quad);
+	renderObjects.push(new renderObject.MakeRenderObject(c, c.gridRenderer(), null));
+	quad.trasform.setTranslation(1, 0, 0);
+	quad.trasform.setScale(1, 1, 1);
+	cam.transform.translate(0, 5, 15);
 
 	draw();
 }	

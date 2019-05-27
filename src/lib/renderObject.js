@@ -11,8 +11,8 @@ let renderObject = {
 	},
 	MakeRenderObject: function(
 		context, 
-		renderer = context.defaultRenderer(context), 
-		parentObject = null)
+		renderer, 
+		parentObject)
 	{
 		this.renderer = renderer;
 		this.context = context;
@@ -30,13 +30,21 @@ let renderObject = {
 		{
 			return this.parentObject;
 		}
-		this.onPreRender = function()
+		this.onPreRender = function(camera)
 		{
-			this.renderer.onPreRender();
+			this.renderer.onPreRender(camera, this);
 		}
 		this.onPostRender = function()
 		{
 			this.renderer.onPostRender();
+		}
+		this.modelToWorld = function()
+		{
+			return this.trasform.toMatrix();
+		}
+		this.worldToModel = function()
+		{
+			return this.trasform.toInvertedMatrix();
 		}
 	}
 

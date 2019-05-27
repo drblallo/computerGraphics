@@ -11,15 +11,15 @@ let trasform  = {
 
 		this.toMatrix = function()
 		{
-			let toReturn = utils.multiplyMatrices(
-				utils.MakeScaleMatrix(
+			let toReturn = this.rotation.toMatrix4();
+				
+			let scale = utils.MakeScaleNuMatrix(
 					this.scale[0],
 					this.scale[1],
-					this.scale[2]),
-				utils.identityMatrix());
+					this.scale[2]);
 
 			toReturn = utils.multiplyMatrices(
-				this.rotation.toMatrix4(),
+				scale,
 				toReturn
 			);
 
@@ -30,11 +30,17 @@ let trasform  = {
 					this.translation[2]), 
 				toReturn);
 
+			toReturn = utils.transposeMatrix(toReturn);
 
 			if (this.parentTransform != null)
 				toReturn = utils.multiplyMatrices(toReturn, this.parentTransform.toMatrix());
 
 			return toReturn;
+		}
+
+		this.toInvertedMatrix =  function()
+		{
+			return utils.invertMatrix(this.toMatrix());
 		}
 
 		//translate by relative means
@@ -75,7 +81,7 @@ let trasform  = {
 			let rotDiff = quaternion.fromEuler(
 				utils.degToRad(x),
 				utils.degToRad(y),
-				utils.degToRad(z));
+				utils.degToRad(z), "XYZ");
 
 			this.rotation = this.rotation.mul(rotDiff);
 		}
@@ -83,7 +89,10 @@ let trasform  = {
 		//set absolute rotate 
 		this.setRotation = function(x, y, z)
 		{
-			let rotDiff = quaternion.fromEuler(x, y, z);
+			let rotDiff = quaternion.fromEuler(
+				utils.degToRad(x),
+				utils.degToRad(y),
+				utils.degToRad(z), "XYZ");
 
 			this.rotation = rotDiff;
 		}
