@@ -424,6 +424,18 @@ let utils = {
 		parallel[11] = (n + f) / (n - f);
 
 		return parallel;
+	},
+	
+	VectorLength:function(vector) {
+		return Math.sqrt(Math.pow(vector[0],2)+Math.pow(vector[1],2)+Math.pow(vector[2],2));
+	},
+
+	VectorDiff:function(vec1, vec2) {
+		let toRet = [];
+		for(let i=0; i<3; i++){
+			toRet.push(vec1[i]-vec2[i]);
+		}
+		return toRet;
 	}
 }
 

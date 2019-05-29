@@ -17,13 +17,13 @@ let renderObject = {
 		this.renderer = renderer;
 		this.context = context;
 		if (parentObject != null)
-			this.transform = new transform.MakeTransform(parentObject.trasform);
+			this.transform = new transform.MakeTransform(parentObject.transform);
 		else
-			this.trasform = new transform.MakeTransform();
+			this.transform = new transform.MakeTransform();
 		this.parentObject = parentObject;
 		this.setParent = function(newParent)
 		{
-			this.transform.setParent(newParent.trasform);
+			this.transform.setParent(newParent.transform);
 			this.parentObject = newParent;
 		}
 		this.getParent = function()
@@ -40,12 +40,15 @@ let renderObject = {
 		}
 		this.modelToWorld = function()
 		{
-			return this.trasform.toMatrix();
+			return this.transform.toMatrix();
 		}
 		this.worldToModel = function()
 		{
-			return this.trasform.toInvertedMatrix();
+			return this.transform.toInvertedMatrix();
 		}
+    this.distanceFrom = function(other) {
+      return this.transform.distanceFrom(other.transform);
+    }
 	}
 
 }

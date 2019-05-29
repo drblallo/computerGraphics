@@ -116,6 +116,9 @@ let trasform  = {
 			this.parentTransform = newP;
 		}
 
+		this.distanceFrom = function(otherTransform) {
+			return utils.VectorLength(utils.VectorDiff(this.translation, otherTransform.translation));
+		}
 	}
 	
 }

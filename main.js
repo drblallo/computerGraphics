@@ -6,20 +6,37 @@ let renderObject = require("./src/lib/renderObject.js")
 let camera = require("./src/lib/camera.js")
 
 let renderObjects = [];
+let transparentRenderObject = [];
 let cam;
+let gl;
 
 let quad;
 
 function draw()
 {
+	gl.clear(gl.COLOR_BUFFER_BIT);
+
 	for (let a = 0; a < renderObjects.length; a++)	
 	{
-		//quad.trasform.rotate(1, 0, 0);
 		renderObjects[a].onPreRender(cam);
 		
 		renderObjects[a].onPostRender();
 	}
+	transparentRenderObject[0].transform.rotate(1, 1, 0);
 
+	gl.enable(gl.BLEND);
+	gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+	transparentRenderObject.sort(function(a,b) {
+		return -(a.distanceFrom(cam) - b.distanceFrom(cam));
+
+	});
+	for (let a = 0; a < transparentRenderObject.length; a++) {
+		transparentRenderObject[a].onPreRender(cam);
+
+		transparentRenderObject[a].onPostRender();
+	}
+		gl.disable(gl.BLEND);
 	window.requestAnimationFrame(draw);
 }
 
@@ -27,13 +44,14 @@ function main()
 {
 	view.view();
 	const canvas = document.getElementById("my-canvas");
-	const gl = canvas.getContext("webgl2");
+	gl = canvas.getContext("webgl2");
 	let c = new context.makeContext(gl);
+
 
 	let w=canvas.clientWidth;
 	let h=canvas.clientHeight;
 
-	gl.clearColor(0.0, 0.0, 0.0, 1.0);
+	gl.clearColor(1.0, 1.0, 1.0, 1.0);
 	gl.viewport(0.0, 0.0, w, h);
 	gl.clear(gl.COLOR_BUFFER_BIT);
 
@@ -41,11 +59,11 @@ function main()
 	gl.enable(gl.DEPTH_TEST);
 
 	quad = new renderObject.MakeRenderObject(c, c.defaultRenderer(), null);
-	renderObjects.push(quad);
+	transparentRenderObject.push(quad);
 	renderObjects.push(new renderObject.MakeRenderObject(c, c.gridRenderer(), null));
-	quad.trasform.setTranslation(1, 0, 0);
-	quad.trasform.setScale(1, 1, 1);
-	cam.transform.translate(0, 5, 15);
+	quad.transform.setTranslation(0, 0, 0);
+	quad.transform.setScale(1, 1, 1);
+	cam.transform.translate(0, 2, 2);
 
 	draw();
 }	

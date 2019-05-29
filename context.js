@@ -25,14 +25,29 @@ void main() {
 	color = vec4(pos, 1);
 }`;
 
+const fs2 = `#version 300 es
+precision highp float;
+
+out vec4 color;
+in vec3 pos;
+
+void main() {
+	if(length(pos)>1.0){
+		color= vec4(1,0,0,0);
+	}
+	else{
+		color= vec4(0,1,1,0.99);
+	}
+}`;
+
 const quad =
 	[
-		0.5, -0.5, 0.0,
-		0.5, 0.5, 0.0,
-		-0.5, -0.5, 0.0,
-		-0.5, -0.5, 0.0,
-		-0.5, 0.5, 0.0,
-		0.5, 0.5, 0.0
+		1, -1.0, 0.0,
+		1, 1, 0.0,
+		-1, -1, 0.0,
+		-1, -1, 0.0,
+		-1, 1, 0.0,
+		1, 1, 0.0
 	]
 
 
@@ -101,10 +116,10 @@ let context =
 		}
 
 
-		this.defaultShader = function(mesh, index, renderType)
+		this.defaultShader = function(mesh, index, renderType, vertex, fragment)
 		{
-			let vShader = this.makeShader(vs, this.gl.VERTEX_SHADER);
-			let fShader = this.makeShader(fs, this.gl.FRAGMENT_SHADER);
+			let vShader = this.makeShader(vertex, this.gl.VERTEX_SHADER);
+			let fShader = this.makeShader(fragment, this.gl.FRAGMENT_SHADER);
 
 			let program = this.makeProgram(vShader, fShader);
 
@@ -173,14 +188,14 @@ let context =
 				linesIndex.push(a);
 			}
 
-			return this.defaultShader(lines, linesIndex, this.gl.LINES);
+			return this.defaultShader(lines, linesIndex, this.gl.LINES, vs, fs);
 		}
 
 		this.defaultRenderer = function()
 		{
 			let renderer = new Object(); 
 			renderer.context = this;
-			renderer.shaderProgram = this.defaultShader(quad, index, this.gl.TRIANGLES);
+			renderer.shaderProgram = this.defaultShader(quad, index, this.gl.TRIANGLES, vs, fs2);
 
 			renderer.onPreRender = function(camera, renderObject)
 			{
@@ -219,3 +234,4 @@ let context =
 }
 
 module.exports = context;
+
