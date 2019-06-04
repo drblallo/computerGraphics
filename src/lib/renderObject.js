@@ -38,6 +38,10 @@ let renderObject = {
 		{
 			this.renderer.onPostRender();
 		}
+		this.render = function()
+		{
+			this.renderer.render();
+		}
 		this.modelToWorld = function()
 		{
 			return this.transform.toMatrix();
@@ -49,6 +53,15 @@ let renderObject = {
     this.distanceFrom = function(other) {
       return this.transform.distanceFrom(other.transform);
     }
+    this.setPixelLocation = function(x,y,z) {
+			this.transform.setTranslation(
+				(-1.0+(x*2.0/context.screenWidth)),
+				(-1.0+(y*2.0/context.screenHeight)),
+				z);
+		}
+		this.setPixelScale = function(x,y) {
+			this.transform.setScale(x/context.screenWidth,y/context.screenHeight, 1);
+		}
 	}
 
 }
