@@ -1,3 +1,4 @@
+let Earth2K = require("./Earth2K");
 
 const vs = `#version 300 es
 #define POSITION_LOCATION 0
@@ -58,70 +59,39 @@ precision highp float;
 #define POSITION_LOCATION 0
 
 layout(location = POSITION_LOCATION) in vec3 in_pos;
+layout(location = 1) in vec2 uv_pos;
+layout(location = 2) in vec3 norm_pos;
+
+
 uniform mat4 modelToWorld;
 uniform mat4 worldToCamera;
 uniform mat4 cameraToScreen;
 
+out vec2 uv;
 out vec3 worldPosition;
+out vec3 norm;
 
 void main() {
 	gl_Position = cameraToScreen * worldToCamera * modelToWorld * vec4(in_pos, 1); 
 	worldPosition = (modelToWorld * vec4(in_pos,1)).xyz;
+	norm = norm_pos;
+	uv = vec2(uv_pos.x, 1.0-uv_pos.y);
 }
 `;
 
 const worldFragmentShader = `#version 300 es
 precision highp float;
 
+in vec3 norm;
+in vec2 uv;
 in vec3 worldPosition ;
 out vec4 fragmentColor ;
-uniform vec3 og_cameraEye ;
-uniform float u_globeOneOverRadiiSquared;
-
-struct Intersection
-{
-	bool Intersects ;
-	float NearTime ;
-	float FarTime;
-};
-
-
-Intersection RayIntersectEllipsoid( vec3 rayOrigin , vec3 rayOriginSquared, 
-	vec3 rayDirection , vec3 oneOverEllipsoidRadiiSquared )
-{ 
-
-		float a = dot(rayDirection * rayDirection, oneOverEllipsoidRadiiSquared);
-    float b = 2.0 * dot(rayOrigin * rayDirection, oneOverEllipsoidRadiiSquared);
-    float c = dot(rayOriginSquared, oneOverEllipsoidRadiiSquared) - 1.0;
-    float discriminant = b * b - 4.0 * a * c;
-
-    if (discriminant < 0.0)
-    {
-        return Intersection(false, 0.0, 0.0);
-    }
-    else if (discriminant == 0.0)
-    {
-        float time = -0.5 * b / a;
-        return Intersection(true, time, time);
-    }
-
-    float t = -0.5 * (b + (b > 0.0 ? 1.0 : -1.0) * sqrt(discriminant));
-    float root1 = t / a;
-    float root2 = c / t;
-
-    return Intersection(true, min(root1, root2), max(root1, root2));
-}
+uniform sampler2D u_texture;
 
 void main ( )
 {
+	fragmentColor = texture(u_texture, uv) + vec4(norm,1);
 
-	vec3 rayDirection = normalize(worldPosition - og_cameraEye) ;
-	vec3 oneover = vec3(u_globeOneOverRadiiSquared, u_globeOneOverRadiiSquared, u_globeOneOverRadiiSquared);
-
-	Intersection i = RayIntersectEllipsoid ( og_cameraEye , (og_cameraEye*og_cameraEye),
-		rayDirection ,  oneover) ;
-		
-	fragmentColor = vec4 ( i.Intersects , !i.Intersects , 0.0 ,1 ) ;
 }
 `;
 
@@ -414,19 +384,37 @@ let context =
 		{
 			let renderer = new Object();
 			renderer.context = this;
-			renderer.shaderProgram = this.defaultShader(cubeVertex, cubeIndexes, gl.TRIANGLES, worldVertexShader, worldFragmentShader);
-			//renderer.shaderProgram.texture = this.makeTexture(textureName);
+			let indices = [];
+			let faces = Earth2K.meshes[0].faces;
+			for (let a = 0; a < faces.length; a++)
+			{
+				indices.push(faces[a][0]);
+				indices.push(faces[a][1]);
+				indices.push(faces[a][2]);
+			}
+			renderer.shaderProgram = this.defaultShader(Earth2K.meshes[0].vertices, indices, gl.TRIANGLES, worldVertexShader, worldFragmentShader);
+			renderer.shaderProgram.texture = this.makeTexture("EarthTex.png");
 
-			renderer.shaderProgram.cameraEyeLocation = gl.getUniformLocation(renderer.shaderProgram, "og_cameraEye");
-			renderer.shaderProgram.oneOverRadiiSquared = gl.getUniformLocation(renderer.shaderProgram, "u_globeOneOverRadiiSquared");
+			renderer.shaderProgram.uvPositionAttribute = gl.getAttribLocation(renderer.shaderProgram, "uv_pos");
+			renderer.shaderProgram.uvBuffer = this.createAndFillBufferObject(Earth2K.meshes[0].texturecoords[0], gl.ARRAY_BUFFER);
+
+			renderer.shaderProgram.normPositionAttribute = gl.getAttribLocation(renderer.shaderProgram, "norm_pos");
+			renderer.shaderProgram.normBuffer = this.createAndFillBufferObject(Earth2K.meshes[0].normals, gl.ARRAY_BUFFER);
+
+
 			renderer.onPreRender = function(camera, renderObject)
 			{
-				//this.context.gl.bindTexture(this.context.gl.TEXTURE_2D, this.shaderProgram.texture);
+				this.context.gl.bindTexture(this.context.gl.TEXTURE_2D, this.shaderProgram.texture);
 				this.shaderProgram.onPreRender(camera, renderObject);
-				gl.uniform3fv(this.shaderProgram.cameraEyeLocation, new Float32Array(camera.transform.translation))
-				let size = renderObject.transform.scale[0];
-				size = 1.0/(size*size);
-				gl.uniform1f(this.shaderProgram.oneOverRadiiSquared, size);
+
+				gl.bindBuffer(gl.ARRAY_BUFFER, this.shaderProgram.uvBuffer);
+				gl.vertexAttribPointer(this.shaderProgram.uvPositionAttribute, 2, gl.FLOAT, false, 0, 0);
+				gl.enableVertexAttribArray(this.shaderProgram.uvPositionAttribute);
+
+				gl.bindBuffer(gl.ARRAY_BUFFER, this.shaderProgram.normBuffer);
+				gl.vertexAttribPointer(this.shaderProgram.normPositionAttribute, 3, gl.FLOAT, false, 0, 0);
+				gl.enableVertexAttribArray(this.shaderProgram.normPositionAttribute);
+
 			}
 
 			renderer.onPostRender = function()
