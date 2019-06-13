@@ -1,4 +1,6 @@
 let Earth2K = require("./Earth2K");
+let camera = require("./src/lib/camera.js")
+let textureDB = require("./src/lib/textureDB.js")
 
 const vs = `#version 300 es
 #define POSITION_LOCATION 0
@@ -15,7 +17,7 @@ void main() {
 	pos = in_pos;
 }`;
 
-const vs2 = `#version 300 es
+const uiVertexShader = `#version 300 es
 #define POSITION_LOCATION 0
 
 layout(location = POSITION_LOCATION) in vec3 in_pos;
@@ -23,10 +25,22 @@ uniform mat4 modelToWorld;
 uniform mat4 worldToCamera;
 uniform mat4 cameraToScreen;
 
+uniform mat4 parentModelToWorld;
+uniform vec3 anchorPoint;
+
 out vec3 pos;
 
 void main() {
-	gl_Position = modelToWorld * vec4(in_pos, 1); 
+	vec4 sAnchorPoint = cameraToScreen * worldToCamera* parentModelToWorld* vec4(anchorPoint, 1);
+	sAnchorPoint = sAnchorPoint/sAnchorPoint.w;
+	vec2 xyAnchorPoint = sAnchorPoint.xy;
+
+	vec4 pos2 = modelToWorld * vec4(in_pos, 1.0);
+	pos2 = pos2/pos2.w;
+	vec2 relPos = pos2.xy;
+	
+	gl_Position = vec4(xyAnchorPoint + relPos, sAnchorPoint.z, 1);
+
 	pos = in_pos;
 }`;
 
@@ -41,15 +55,16 @@ void main() {
 	color = vec4(0,0,0, 1);
 }`;
 
-const fs2 = `#version 300 es
+const uiFragmentShader = `#version 300 es
 precision highp float;
 
 uniform sampler2D u_texture;
 out vec4 color;
 in vec3 pos;
 
+
 void main() {
-vec2 loc = vec2((pos.x+1.0)/2.0, (pos.y+1.0)/2.0);  //texture expects 0:1 position (not -1:1)
+vec2 loc = vec2((pos.x+1.0)/2.0, 1.0- ((pos.y+1.0)/2.0));  //texture expects 0:1 position (not -1:1)
 	color = texture(u_texture, loc);
 
 }`;
@@ -90,7 +105,7 @@ uniform sampler2D u_texture;
 
 void main ( )
 {
-	fragmentColor = texture(u_texture, uv) + vec4(norm,1);
+	fragmentColor = texture(u_texture, uv); 
 
 }
 `;
@@ -142,6 +157,52 @@ let context =
 		this.gl = gl;
 		this.screenWidth = width;
 		this.screenHeight = height;
+		this.textureDB = new textureDB.makeDB(this);
+		this.renderObjects = [];
+		this.transparentRenderObject = [];
+		this.camera = new camera.MakeCamera(width, height);
+
+		this.draw = function ()
+		{
+			let gl = this.gl;
+			let cam = this.camera;
+			gl.clear(gl.COLOR_BUFFER_BIT);
+
+			//this.globe.transform.rotate(0, 0,1);
+			this.globe.transform.rotationLerp(0, 1, 0, 0.01);
+			for (let a = 0; a < this.renderObjects.length; a++)	
+			{
+				if (!this.renderObjects[a].visible)
+					continue;
+				this.renderObjects[a].onPreRender(cam);
+				this.renderObjects[a].render();
+
+				this.renderObjects[a].onPostRender();
+			}
+
+			gl.enable(gl.BLEND);
+			gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+			this.transparentRenderObject.sort(function(a,b) {
+				return -(a.distanceFrom(cam) - b.distanceFrom(cam));
+
+			});
+			for (let a = 0; a < this.transparentRenderObject.length; a++) {
+				if (!this.transparentRenderObject[a].visible)
+					continue;
+				this.transparentRenderObject[a].onPreRender(cam);
+				this.transparentRenderObject[a].render();
+
+				this.transparentRenderObject[a].onPostRender();
+			}
+			gl.disable(gl.BLEND);
+
+			//could not use this directly because inside the lambda it was referncing
+			//the lambda caller instead of context
+			let otherMe = this; 
+			window.requestAnimationFrame(function(){otherMe.draw();});
+		}
+
 		this.makeShader = function(code, shaderType)
 		{
 			let shader = this.gl.createShader(shaderType);
@@ -151,6 +212,11 @@ let context =
 					alert("ERROR IN SHADER : " + this.gl.getShaderInfoLog(shader));
 			}
 			return shader;
+		}
+
+		this.getTexture = function(textureName)
+		{
+			return this.textureDB.getTexture(textureName);
 		}
 
 		this.makeTexture = function (textureName) {
@@ -311,7 +377,7 @@ let context =
 		{
 			let renderer = new Object(); 
 			renderer.context = this;
-			renderer.shaderProgram = this.defaultShader(quad, index, this.gl.TRIANGLES, vs2, fs2);
+			renderer.shaderProgram = this.defaultShader(quad, index, this.gl.TRIANGLES, uiVertexShader, uiFragmentShader);
 
 			renderer.onPreRender = function(camera, renderObject)
 			{
@@ -336,6 +402,7 @@ let context =
 		{
 			let renderer = new Object(); 
 			renderer.context = this;
+			renderer.isTransparent = false;
 			renderer.shaderProgram = this.gridShader();
 
 			renderer.onPreRender = function(camera, renderObject)
@@ -359,13 +426,21 @@ let context =
 		{
 			let renderer = new Object();
 			renderer.context = this;
-			renderer.shaderProgram = this.defaultShader(quad, index, gl.TRIANGLES, vs2, fs2);
-			renderer.shaderProgram.texture = this.makeTexture(textureName);
+			renderer.isTransparent = true;
+			renderer.shaderProgram = this.defaultShader(quad, index, gl.TRIANGLES, uiVertexShader, uiFragmentShader);
+			renderer.shaderProgram.texture = this.getTexture(textureName);
+			renderer.shaderProgram.parentModelToWorld = gl.getUniformLocation(renderer.shaderProgram, "parentModelToWorld");
+			renderer.shaderProgram.anchorPoint = gl.getUniformLocation(renderer.shaderProgram, "anchorPoint");
 
 			renderer.onPreRender = function(camera, renderObject)
 			{
 				this.context.gl.bindTexture(this.context.gl.TEXTURE_2D, this.shaderProgram.texture);
 				this.shaderProgram.onPreRender(camera, renderObject);
+
+				gl.uniformMatrix4fv(this.shaderProgram.parentModelToWorld, gl.FALSE, this.context.globe.modelToWorld());
+
+				let ac = renderObject.anchorPoint;
+				gl.uniform3f(this.shaderProgram.anchorPoint, ac[0], ac[1], ac[2] );
 			}
 
 			renderer.onPostRender = function()
@@ -384,6 +459,7 @@ let context =
 		{
 			let renderer = new Object();
 			renderer.context = this;
+			renderer.isTransparent = false;
 			let indices = [];
 			let faces = Earth2K.meshes[0].faces;
 			for (let a = 0; a < faces.length; a++)
@@ -392,8 +468,16 @@ let context =
 				indices.push(faces[a][1]);
 				indices.push(faces[a][2]);
 			}
-			renderer.shaderProgram = this.defaultShader(Earth2K.meshes[0].vertices, indices, gl.TRIANGLES, worldVertexShader, worldFragmentShader);
-			renderer.shaderProgram.texture = this.makeTexture("EarthTex.png");
+			let mesh = Earth2K.meshes[0].vertices;
+			for (let i = 0; i < mesh.length; i = i +3)
+			{
+				let l = (mesh[i] ** 2) + (mesh[i+1] ** 2) + (mesh[i+2] ** 2);
+				l = Math.sqrt(l);
+				for (let b = 0; b < 3; b++)
+					mesh[i+b] = mesh[i+b]/l;
+			}
+			renderer.shaderProgram = this.defaultShader(mesh, indices, gl.TRIANGLES, worldVertexShader, worldFragmentShader);
+			renderer.shaderProgram.texture = this.getTexture("EarthTex.png");
 
 			renderer.shaderProgram.uvPositionAttribute = gl.getAttribLocation(renderer.shaderProgram, "uv_pos");
 			renderer.shaderProgram.uvBuffer = this.createAndFillBufferObject(Earth2K.meshes[0].texturecoords[0], gl.ARRAY_BUFFER);
