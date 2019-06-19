@@ -17,7 +17,9 @@ let renderObject = {
 		this.renderer = renderer;
 		this.context = context;
 		this.visible = true;
-		if (renderer.isTransparent)
+		if (renderer.isUI)
+			context.uiObjects.push(this)
+		else if (renderer.isTransparent)
 			context.transparentRenderObject.push(this);
 		else
 			context.renderObjects.push(this);

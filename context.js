@@ -110,6 +110,79 @@ void main ( )
 }
 `;
 
+const atmosphereVertexShader = `#version 300 es
+precision highp float;
+#define POSITION_LOCATION 0
+
+layout(location = POSITION_LOCATION) in vec3 in_pos;
+
+uniform mat4 modelToWorld;
+uniform mat4 worldToCamera;
+uniform mat4 cameraToScreen;
+
+out vec3 norm;
+
+void main() {
+	
+	vec4 atmPos = worldToCamera * modelToWorld * vec4(1.02*in_pos, 1);
+	gl_Position = cameraToScreen * atmPos;
+	norm = normalize(in_pos);
+}
+`;
+
+const atmFragmentShader = `#version 300 es
+precision highp float;
+
+in vec3 norm;
+out vec4 fragmentColor ;
+uniform sampler2D u_texture;
+
+void main ( )
+{
+	vec3 ADir = vec3(0, 1, 0);
+	float amBlend = (dot(norm, ADir) + 1.0) / 2.0;
+	vec4 ambientLightColor = vec4(0, 0, 1, 1);
+	vec4 ambientLightLowColor = vec4(1, 1, 0, 1);
+	vec4 ambColor = vec4(1, 1, 1, 0.5);
+	vec4 ambientHemi = (ambientLightColor * amBlend + ambientLightLowColor * (1.0 - amBlend)) * ambColor;                                                                                     
+	fragmentColor = ambientHemi;
+	
+}
+`;
+const skyBoxVertexShader = `#version 300 es
+precision highp float;
+#define POSITION_LOCATION 0
+
+layout(location = POSITION_LOCATION) in vec3 in_pos;
+layout(location = 1) in vec2 uv_pos;
+
+uniform mat4 modelToWorld;
+uniform mat4 worldToCamera;
+uniform mat4 cameraToScreen;
+
+out vec2 uv;
+
+void main() {
+	
+	gl_Position = cameraToScreen * worldToCamera * modelToWorld * vec4(in_pos, 1); 
+	uv = vec2(uv_pos.x, uv_pos.y);
+
+}
+`;
+
+const skyBoxFragmentShader = `#version 300 es
+precision highp float;
+
+in vec2 uv;
+out vec4 fragmentColor ;
+uniform sampler2D u_texture;
+
+void main ( )
+{
+	fragmentColor = texture(u_texture, uv); 
+}
+`;
+
 let cubeVertex = [
 	-1.0,-1.0, 1.0,
 	1.0, -1.0, 1.0,
@@ -119,6 +192,87 @@ let cubeVertex = [
 	1.0, -1.0, -1.0,
 	1.0,  1.0, -1.0,
 	-1.0, 1.0, -1.0];
+
+let skyBox = [
+	-1.0,-1.0, 1.0, //back
+	1.0, -1.0, 1.0, //back
+	1.0,  1.0, 1.0, //back
+	-1.0, 1.0, 1.0, //back
+	-1.0,-1.0, -1.0, //front
+	1.0, -1.0, -1.0, //front 
+	1.0,  1.0, -1.0, //front 
+	-1.0, 1.0, -1.0, //front
+
+	-1.0, 1.0, -1.0,  //up
+	1.0,  1.0, -1.0,  //up
+	1.0,  1.0,  1.0,  //up
+	-1.0, 1.0,  1.0,  //up
+	-1.0,-1.0, -1.0,  //down
+	1.0, -1.0, -1.0,  //down
+	1.0, -1.0,  1.0,  //down
+	-1.0,-1.0,  1.0,  //down
+
+	1.0,-1.0, -1.0,  //right
+	1.0,1.0,  -1.0,  //right
+	1.0,1.0,   1.0,  //right
+	1.0,-1.0,  1.0,  //right
+	-1.0,-1.0, -1.0,  //left
+	-1.0,1.0,  -1.0,  //left
+	-1.0,1.0,   1.0,  //left
+	-1.0,-1.0,  1.0,  //left
+]; 
+
+let skyBoxUV = [
+	0.25, 0.333,
+	0.5, 0.333,
+	0.5, 0.666,
+	0.25, 0.666,
+	1, 0.333,
+	0.75, 0.333,
+	0.75, 0.666,
+	1, 0.666,
+
+	0.25, 1,
+	0.5, 1,
+	0.5, 0.666,
+	0.25, 0.666,
+	0.25, 0.0,
+	0.5, 0.0,
+	0.5, 0.333,
+	0.25, 0.333,
+
+	0.75, 0.333,
+	0.75, 0.666,
+	0.5, 0.666,
+	0.5, 0.333,
+	0.0, 0.333,
+	0.0, 0.666,
+	0.25, 0.666,
+	0.25, 0.333
+	
+];
+
+let skyBoxIndicies = [
+	0, 2, 1,
+	0, 3, 2,
+
+	4, 5, 6,
+	4, 6, 7,
+
+	8, 9, 10,
+	8, 10, 11,
+
+	12, 14, 13,
+	12, 15, 14,
+
+	16, 18, 17,
+	16, 19, 18,
+
+	20, 21, 22,
+	20, 22, 23
+];
+
+
 
 let cubeIndexes = [
 	0, 1, 2,
@@ -160,6 +314,7 @@ let context =
 		this.textureDB = new textureDB.makeDB(this);
 		this.renderObjects = [];
 		this.transparentRenderObject = [];
+		this.uiObjects = []
 		this.camera = new camera.MakeCamera(width, height);
 
 		this.draw = function ()
@@ -169,7 +324,9 @@ let context =
 			gl.clear(gl.COLOR_BUFFER_BIT);
 
 			//this.globe.transform.rotate(0, 0,1);
-			this.globe.transform.rotationLerp(0, 1, 0, 0.01);
+			//this.globe.transform.rotationLerp(0, 1, 0, 0.01);
+			this.globe.transform.rotate(0, 1,1);
+			//this.globe.transform.setRotation(0, 100,0);
 			for (let a = 0; a < this.renderObjects.length; a++)	
 			{
 				if (!this.renderObjects[a].visible)
@@ -181,6 +338,7 @@ let context =
 			}
 
 			gl.enable(gl.BLEND);
+			gl.disable(gl.DEPTH_TEST);
 			gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 
 			this.transparentRenderObject.sort(function(a,b) {
@@ -195,7 +353,16 @@ let context =
 
 				this.transparentRenderObject[a].onPostRender();
 			}
+			for (let a = 0; a < this.uiObjects.length; a++) {
+				if (!this.uiObjects[a].visible)
+					continue;
+				this.uiObjects[a].onPreRender(cam);
+				this.uiObjects[a].render();
+
+				this.uiObjects[a].onPostRender();
+			}
 			gl.disable(gl.BLEND);
+			gl.enable(gl.DEPTH_TEST);
 
 			//could not use this directly because inside the lambda it was referncing
 			//the lambda caller instead of context
@@ -243,6 +410,8 @@ let context =
 				// Now that the image has loaded make copy it to the texture.
 				gl.bindTexture(gl.TEXTURE_2D, texture);
 				gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA,gl.UNSIGNED_BYTE, image);
+				gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.MIRRORED_REPEAT);
+				gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.MIRRORED_REPEAT);
 				gl.generateMipmap(gl.TEXTURE_2D);
 			});
 
@@ -379,6 +548,7 @@ let context =
 			renderer.context = this;
 			renderer.shaderProgram = this.defaultShader(quad, index, this.gl.TRIANGLES, uiVertexShader, uiFragmentShader);
 
+			renderer.isUI = false;
 			renderer.onPreRender = function(camera, renderObject)
 			{
 				this.shaderProgram.onPreRender(camera, renderObject);
@@ -404,6 +574,7 @@ let context =
 			renderer.context = this;
 			renderer.isTransparent = false;
 			renderer.shaderProgram = this.gridShader();
+			renderer.isUI = false;
 
 			renderer.onPreRender = function(camera, renderObject)
 			{
@@ -427,6 +598,7 @@ let context =
 			let renderer = new Object();
 			renderer.context = this;
 			renderer.isTransparent = true;
+			renderer.isUI = true;
 			renderer.shaderProgram = this.defaultShader(quad, index, gl.TRIANGLES, uiVertexShader, uiFragmentShader);
 			renderer.shaderProgram.texture = this.getTexture(textureName);
 			renderer.shaderProgram.parentModelToWorld = gl.getUniformLocation(renderer.shaderProgram, "parentModelToWorld");
@@ -455,11 +627,81 @@ let context =
 
 		}
 
+		this.backGroundRenderer = function(textureName)
+		{
+			let renderer = new Object();
+			renderer.context = this;
+			renderer.isTransparent = false;
+			renderer.isUI = false;
+			renderer.shaderProgram = this.defaultShader(quad, index, gl.TRIANGLES, uiVertexShader, uiFragmentShader);
+			renderer.shaderProgram.texture = this.getTexture(textureName);
+			renderer.shaderProgram.parentModelToWorld = gl.getUniformLocation(renderer.shaderProgram, "parentModelToWorld");
+			renderer.shaderProgram.anchorPoint = gl.getUniformLocation(renderer.shaderProgram, "anchorPoint");
+
+			renderer.onPreRender = function(camera, renderObject)
+			{
+				this.context.gl.bindTexture(this.context.gl.TEXTURE_2D, this.shaderProgram.texture);
+				this.shaderProgram.onPreRender(camera, renderObject);
+
+				gl.uniformMatrix4fv(this.shaderProgram.parentModelToWorld, gl.FALSE, this.context.globe.modelToWorld());
+
+				let ac = renderObject.anchorPoint;
+				gl.uniform3f(this.shaderProgram.anchorPoint, ac[0], ac[1], ac[2] );
+			}
+
+			renderer.onPostRender = function()
+			{
+				this.shaderProgram.onPostRender();
+			}
+			renderer.render = function()
+			{
+				this.shaderProgram.render();
+			}
+			return renderer;
+		}
+
+		this.skyBoxRenderer = function()
+		{
+			let renderer = new Object();
+			renderer.context = this;
+			renderer.isTransparent = false;
+			renderer.isUI = false;
+			renderer.shaderProgram = this.defaultShader(skyBox, skyBoxIndicies, gl.TRIANGLES, worldVertexShader, worldFragmentShader);
+			renderer.shaderProgram.texture = this.getTexture("skybox.png");
+
+			renderer.shaderProgram.uvPositionAttribute = gl.getAttribLocation(renderer.shaderProgram, "uv_pos");
+			renderer.shaderProgram.uvBuffer = this.createAndFillBufferObject(skyBoxUV, gl.ARRAY_BUFFER);
+
+
+			renderer.onPreRender = function(camera, renderObject)
+			{
+				this.context.gl.bindTexture(this.context.gl.TEXTURE_2D, this.shaderProgram.texture);
+				this.shaderProgram.onPreRender(camera, renderObject);
+
+				gl.bindBuffer(gl.ARRAY_BUFFER, this.shaderProgram.uvBuffer);
+				gl.vertexAttribPointer(this.shaderProgram.uvPositionAttribute, 2, gl.FLOAT, false, 0, 0);
+				gl.enableVertexAttribArray(this.shaderProgram.uvPositionAttribute);
+
+			}
+
+			renderer.onPostRender = function()
+			{
+				this.shaderProgram.onPostRender();
+			}
+			renderer.render = function()
+			{
+				this.shaderProgram.render();
+			}
+			return renderer;
+
+		};
+
 		this.worldRenderer = function()
 		{
 			let renderer = new Object();
 			renderer.context = this;
 			renderer.isTransparent = false;
+			renderer.isUI = false;
 			let indices = [];
 			let faces = Earth2K.meshes[0].faces;
 			for (let a = 0; a < faces.length; a++)
@@ -498,6 +740,48 @@ let context =
 				gl.bindBuffer(gl.ARRAY_BUFFER, this.shaderProgram.normBuffer);
 				gl.vertexAttribPointer(this.shaderProgram.normPositionAttribute, 3, gl.FLOAT, false, 0, 0);
 				gl.enableVertexAttribArray(this.shaderProgram.normPositionAttribute);
+
+			}
+
+			renderer.onPostRender = function()
+			{
+				this.shaderProgram.onPostRender();
+			}
+			renderer.render = function()
+			{
+				this.shaderProgram.render();
+			}
+			return renderer;
+
+		};
+		this.atmRenderer = function()
+		{
+			let renderer = new Object();
+			renderer.context = this;
+			renderer.isTransparent = true;
+			renderer.isUI = false;
+			let indices = [];
+			let faces = Earth2K.meshes[0].faces;
+			for (let a = 0; a < faces.length; a++)
+			{
+				indices.push(faces[a][0]);
+				indices.push(faces[a][1]);
+				indices.push(faces[a][2]);
+			}
+			let mesh = Earth2K.meshes[0].vertices;
+			for (let i = 0; i < mesh.length; i = i +3)
+			{
+				let l = (mesh[i] ** 2) + (mesh[i+1] ** 2) + (mesh[i+2] ** 2);
+				l = Math.sqrt(l);
+				for (let b = 0; b < 3; b++)
+					mesh[i+b] = mesh[i+b]/l;
+			}
+			renderer.shaderProgram = this.defaultShader(mesh, indices, gl.TRIANGLES, atmosphereVertexShader, atmFragmentShader);
+
+			renderer.onPreRender = function(camera, renderObject)
+			{
+				this.context.gl.bindTexture(this.context.gl.TEXTURE_2D, this.shaderProgram.texture);
+				this.shaderProgram.onPreRender(camera, renderObject);
 
 			}
 

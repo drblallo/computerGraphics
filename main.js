@@ -34,17 +34,24 @@ function main()
 	context.camera.transform.translate(0, 1, 4);
 
 	context.globe.transform.setScale(3, 3, 3);
-	//quad = new renderObject.MakeRenderObject(context, context.uiRenderer("star.png"), null);
-	let quad2 = new renderObject.MakeRenderObject(context, context.uiRenderer("star.png"), null);
-	//quad.setPixelLocation(0, 0, 0);
+	quad = new renderObject.MakeRenderObject(context, context.skyBoxRenderer(), context.globe);
+	quad.transform.setScale(10, 10, 10);
+	//let quad2 = new renderObject.MakeRenderObject(context, context.uiRenderer("star.png"), null);
+	let atm = new renderObject.MakeRenderObject(context, context.atmRenderer(), null);
+	atm.transform.setScale(3, 3, 3);
+	//alert(h);
+	//alert(w);
+	//quad.setPixelLocation(0, 58, 0);
 	//quad.setPixelScale(32, 32);
 	//quad.setAnchorPoint(1.1, 0, 0.0);
-	quad2.setPixelScale(32, 32);
-	quad2.setAnchorPoint(Math.sqrt(2)/2*1.1, Math.sqrt(2)/2*1.1, 0.0);
+	//quad2.setPixelScale(32, 32);
+	//quad2.setAnchorPoint(Math.sqrt(2)/2*1.11, Math.sqrt(2)/2*1.11, 0.0);
 
 	let ogg = TextObject.makeCity("citA", "text\next", context);
+	let ogg2 = TextObject.makeCity("AAA", "text\next", context);
 	//ogg.setTranslation(200, 200);
-	ogg.setAnchorPoint(1.1, 0, 0);
+	ogg.setAnchorPoint(0, 1, 0);
+	ogg2.setAnchorPoint(0, 0, 1);
 	ogg.setTextVisible(false);
 
 
