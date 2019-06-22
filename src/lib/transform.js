@@ -97,10 +97,11 @@ let trasform  = {
 			this.rotation = rotDiff;
 		}
 
-		this.rotationLerp = function(x, y, z, coeff)
+		this.rotationLerp = function(xyz, coeff)
 		{
-
-			let target = quaternion.fromBetweenVectors([x, y, z], [0, 0, 1]);
+			if (xyz == null)
+				return;
+			let target = quaternion.fromBetweenVectors(xyz, [0, 0, 1]);
 
 			this.rotation = this.rotation.slerp(target)(coeff);
 		}

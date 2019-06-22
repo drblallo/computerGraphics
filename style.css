@@ -1,0 +1,24 @@
+.button-container button{
+    margin-left: 50px;
+    margin-right: 40px;
+    margin-bottom: 15px;
+}
+.button-container{
+    margin-top: 30px;
+}
+.button-container button:hover{
+    background-color: #D3280D;
+    color: white;
+    border-radius: 3px;
+    border-color: #D3280D;
+}
+.menu{
+    position: absolute;
+    background-color: black;
+    height: 600px;
+    width: 250px
+}
+.button-container .see-more{
+    margin-left: 70px;
+    margin-bottom: 30px;
+}

@@ -1,6 +1,7 @@
 let Earth2K = require("./Earth2K");
-let camera = require("./src/lib/camera.js")
-let textureDB = require("./src/lib/textureDB.js")
+let camera = require("./src/lib/camera.js");
+let textureDB = require("./src/lib/textureDB.js");
+
 
 const vs = `#version 300 es
 #define POSITION_LOCATION 0
@@ -314,7 +315,7 @@ let context =
 		this.textureDB = new textureDB.makeDB(this);
 		this.renderObjects = [];
 		this.transparentRenderObject = [];
-		this.uiObjects = []
+		this.uiObjects = [];
 		this.camera = new camera.MakeCamera(width, height);
 
 		this.draw = function ()
@@ -324,8 +325,11 @@ let context =
 			gl.clear(gl.COLOR_BUFFER_BIT);
 
 			//this.globe.transform.rotate(0, 0,1);
+
+			let t = this.cities.getCurrentAnchorPoint();
+			this.globe.transform.rotationLerp(t, 0.01);
 			//this.globe.transform.rotationLerp(0, 1, 0, 0.01);
-			this.globe.transform.rotate(0, 1,1);
+			//this.globe.transform.rotate(0, 1,1);
 			//this.globe.transform.setRotation(0, 100,0);
 			for (let a = 0; a < this.renderObjects.length; a++)	
 			{
@@ -341,7 +345,7 @@ let context =
 			gl.disable(gl.DEPTH_TEST);
 			gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 
-			this.transparentRenderObject.sort(function(a,b) {
+			this.transparentRenderObject = this.transparentRenderObject.sort(function(a,b) {
 				return -(a.distanceFrom(cam) - b.distanceFrom(cam));
 
 			});
@@ -353,6 +357,11 @@ let context =
 
 				this.transparentRenderObject[a].onPostRender();
 			}
+
+			this.uiObjects.sort(function(a,b) {
+				return -(a.distanceFrom(cam) - b.distanceFrom(cam));
+
+			});
 			for (let a = 0; a < this.uiObjects.length; a++) {
 				if (!this.uiObjects[a].visible)
 					continue;
@@ -666,7 +675,7 @@ let context =
 			renderer.context = this;
 			renderer.isTransparent = false;
 			renderer.isUI = false;
-			renderer.shaderProgram = this.defaultShader(skyBox, skyBoxIndicies, gl.TRIANGLES, worldVertexShader, worldFragmentShader);
+			renderer.shaderProgram = this.defaultShader(skyBox, skyBoxIndicies, gl.TRIANGLES, skyBoxVertexShader, skyBoxFragmentShader);
 			renderer.shaderProgram.texture = this.getTexture("skybox.png");
 
 			renderer.shaderProgram.uvPositionAttribute = gl.getAttribLocation(renderer.shaderProgram, "uv_pos");
@@ -796,10 +805,10 @@ let context =
 			return renderer;
 
 		}
-
 	}
 
 }
+
 
 module.exports = context;
 

@@ -3,13 +3,27 @@ let view = require('./src/view.js');
 let Context = require("./context.js")
 let utils = require("./src/lib/utils.js")
 let renderObject = require("./src/lib/renderObject.js")
-let TextObject = require("./src/lib/textObject.js")
+let CityList = require("./src/lib/cityList.js")
 
 let gl;
 
 let quad;
 let context;
 
+function removeSeeMore() {
+	let elem = document.getElementById('dummy');
+	if (elem != null)
+		elem.parentNode.removeChild(elem);
+}
+
+function cityClicked(index){
+	removeSeeMore();
+	document.getElementById("city"+(index+1)).innerHTML = '<button id="dummy" class = "see-more" onclick="seeCard()">See more</button>';
+	context.cities.setCurrentCity(index);
+}
+function seeCard() {
+	context.cities.showCurrentCityText(true);
+}
 
 function main()
 {
@@ -30,6 +44,7 @@ function main()
 
 
 	context.globe = new renderObject.MakeRenderObject(context, context.worldRenderer(), null);
+	context.cities = new CityList.makeCityList(context);
 	let grid = new renderObject.MakeRenderObject(context, context.gridRenderer(), null);
 	context.camera.transform.translate(0, 1, 4);
 
@@ -47,16 +62,12 @@ function main()
 	//quad2.setPixelScale(32, 32);
 	//quad2.setAnchorPoint(Math.sqrt(2)/2*1.11, Math.sqrt(2)/2*1.11, 0.0);
 
-	let ogg = TextObject.makeCity("citA", "text\next", context);
-	let ogg2 = TextObject.makeCity("AAA", "text\next", context);
-	//ogg.setTranslation(200, 200);
-	ogg.setAnchorPoint(0, 1, 0);
-	ogg2.setAnchorPoint(0, 0, 1);
-	ogg.setTextVisible(false);
+
 
 
 	context.draw();
 }	
 
 window.mainFunction = main;
-
+window.cityClicked = cityClicked;
+window.seeCard = seeCard;

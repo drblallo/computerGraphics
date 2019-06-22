@@ -62,8 +62,15 @@ let renderObject = {
 		{
 			this.anchorPoint = [x, y, z];
 		}
+		this.getAnchorPoint = function()
+		{
+			return this.anchorPoint;
+		};
     this.distanceFrom = function(other) {
-      return this.transform.distanceFrom(other.transform);
+    	if (this.renderer.isTransparent) {
+    		return this.transform.translation[2];
+			}
+    		return this.transform.distanceFrom(other.transform);
     }
     this.setPixelLocation = function(x,y,z) {
 			this.transform.setTranslation(

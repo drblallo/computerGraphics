@@ -3,13 +3,41 @@
 	<head>
 		<title>HTML 5 Canvas Element</title>
 		<script src="./bundle.js"></script>
+		<link rel="stylesheet" href="style.css" type="text/css">
 	</head>
 	
 	<body style="background-color: grey;" onLoad="window.mainFunction();">
-		<canvas id="my-canvas" width='600' height='600' style="background-color: white;">
-			Your browser doesn't support the Canvas Element!
-		</canvas>
-		<center><h1>Hello there</h1></center>
+		<div>
+			<canvas id="my-canvas" width='600' height='600' style="background-color: white; position: relative">
+				Your browser doesn't support the Canvas Element!
+			</canvas>
+			<span class="menu">
+				<h1 align="center" style="color: #D3280D; ">3D World</h1>
+				<h2 align="center" style="color: lightgrey;">Pick a city!</h2>
+				<div class="button-container">
+					<button onclick="cityClicked(0)">
+						New York
+					</button>
+					<div id="city1"></div>
+					<button onclick="cityClicked(1)">
+						Paris
+					</button>
+					<div id="city2"></div>
+					<button onclick="cityClicked(2)">
+						Cairo
+					</button>
+					<div id="city3"></div>
+					<button onclick="cityClicked(3)">
+						Sydney
+					</button>
+					<div id="city4"></div>
+					<button onclick="cityClicked(4)">
+						Tokyo
+					</button>
+					<div id="city5"></div>
+				</div>
+			</span>
+		</div>
 	</body>
 
 </html>
