@@ -99,6 +99,14 @@ let utils = {
 		return(angle*Math.PI/180);
 	},
 
+	normalizeVector: function(v)
+	{
+		let abs = 0;
+		for (let b = 0; b < v.length(); b++)
+			abs += v[b]*v[b];
+		return Math.sqrt(abs);
+	},
+
 	radToDeg: function(angle){
 		return((angle/Math.PI)*180);
 	},

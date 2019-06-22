@@ -7,7 +7,6 @@ let CityList = require("./src/lib/cityList.js")
 
 let gl;
 
-let quad;
 let context;
 
 function removeSeeMore() {
@@ -49,20 +48,20 @@ function main()
 	context.camera.transform.translate(0, 1, 4);
 
 	context.globe.transform.setScale(3, 3, 3);
-	quad = new renderObject.MakeRenderObject(context, context.skyBoxRenderer(), context.globe);
-	quad.transform.setScale(10, 10, 10);
-	//let quad2 = new renderObject.MakeRenderObject(context, context.uiRenderer("star.png"), null);
+
+	context.skybox = new renderObject.MakeRenderObject(context, context.skyBoxRenderer(), context.globe);
+	context.skybox.transform.setScale(10, 10, 10);
+
+	context.skybox.getSun = function()
+	{
+		return utils.multiplyMatrixVector(context.transform.toMatrix(), [0.3, 0.6, 1]);
+	}
+
 	let atm = new renderObject.MakeRenderObject(context, context.atmRenderer(), null);
 	atm.transform.setScale(3, 3, 3);
-	//alert(h);
-	//alert(w);
-	//quad.setPixelLocation(0, 58, 0);
-	//quad.setPixelScale(32, 32);
-	//quad.setAnchorPoint(1.1, 0, 0.0);
-	//quad2.setPixelScale(32, 32);
-	//quad2.setAnchorPoint(Math.sqrt(2)/2*1.11, Math.sqrt(2)/2*1.11, 0.0);
-
-
+	//atm.transform.setTranslation(3, 6, 10);
+	//context.camera.transform.setTranslation(0, 5, 5);
+	//context.camera.transform.rotate(0, 0, 180);
 
 
 	context.draw();

@@ -1,6 +1,8 @@
 let Earth2K = require("./Earth2K");
 let camera = require("./src/lib/camera.js");
 let textureDB = require("./src/lib/textureDB.js");
+let utils = require("./src/lib/utils.js")
+let renderObject = require("./src/lib/renderObject.js")
 
 
 const vs = `#version 300 es
@@ -318,11 +320,11 @@ let context =
 		this.uiObjects = [];
 		this.camera = new camera.MakeCamera(width, height);
 
-		this.draw = function ()
-		{
-			let gl = this.gl;
-			let cam = this.camera;
-			gl.clear(gl.COLOR_BUFFER_BIT);
+	this.draw = function ()
+	{
+		let gl = this.gl;
+		let cam = this.camera;
+		gl.clear(gl.COLOR_BUFFER_BIT);
 
 			//this.globe.transform.rotate(0, 0,1);
 
