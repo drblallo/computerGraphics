@@ -105,11 +105,91 @@ in vec2 uv;
 in vec3 worldPosition ;
 out vec4 fragmentColor ;
 uniform sampler2D u_texture;
+uniform sampler2D u_ReflectTexture;
+
+uniform vec3 ADir;
+uniform vec4 AlightType;
+uniform vec3 APos;
+uniform vec3 eyePos;
+
+vec3 compLightDir(vec3 LPos, vec3 LDir, vec4 lightType) {
+	//lights
+	// -> Point
+	vec3 pointLightDir = normalize(LPos - worldPosition);
+	// -> Direct
+	vec3 directLightDir = -LDir;
+	// -> Spot
+	vec3 spotLightDir = normalize(LPos - worldPosition);
+
+	return            directLightDir * lightType.x +
+					  pointLightDir * lightType.y +
+					  spotLightDir * lightType.z;
+}
+
+vec4 compLightColor(vec4 lightColor, float LTarget, float LDecay, vec3 LPos, vec3 LDir,
+					float LConeOut, float LConeIn, vec4 lightType) {
+	float LCosOut = cos(radians(LConeOut / 2.0));
+	float LCosIn = cos(radians(LConeOut * LConeIn / 2.0));
+
+	//lights
+	// -> Point
+	vec4 pointLightCol = lightColor * pow(LTarget / length(LPos - worldPosition), LDecay);
+	// -> Direct
+	vec4 directLightCol = lightColor;
+	// -> Spot
+	vec3 spotLightDir = normalize(LPos - worldPosition);
+	float CosAngle = dot(spotLightDir, LDir);
+	vec4 spotLightCol = lightColor * pow(LTarget / length(LPos - worldPosition), LDecay) *
+						clamp((CosAngle - LCosOut) / (LCosIn - LCosOut), 0.0, 1.0);
+	
+	spotLightCol = vec4(1.0-spotLightCol.x, 1.0-spotLightCol.y, 1.0-spotLightCol.z, 1);
+						
+	// ----> Select final component
+	return          directLightCol * lightType.x +
+					pointLightCol * lightType.y +
+					spotLightCol * lightType.z;
+}
 
 void main ( )
 {
-	fragmentColor = texture(u_texture, uv); 
+	float LAConeOut =10.0;
+	float LAConeIn = 5.0;
+	float LADecay = 0.0;
+	float LATarget = 61.0;
+	vec4 LAlightColor = vec4(1, 1, 1, 1);
+	vec4 diffuseColor = texture(u_texture, uv);
 
+
+	vec3 LDir = compLightDir(APos, ADir, AlightType);
+	vec3 UDir = -normalize(1.0 * ADir);
+	vec4 LlightCol = compLightColor(LAlightColor, LATarget, LADecay, APos, UDir,
+								     LAConeOut, LAConeIn, AlightType);
+	vec3 normalVec = normalize(worldPosition);
+	vec3 eyedirVec = normalize(eyePos - worldPosition);
+
+	vec4 specularColor = vec4(0.6, 0.6, 1, 1);
+	vec3 reflection = -reflect(LDir, normalVec);
+	vec3 shine = texture(u_ReflectTexture, uv).xyz;
+	float shineAbs = (1.0-shine.x)*100.0;
+	vec4 specularPhong = LlightCol * pow(max(dot(reflection, eyedirVec), 0.0), shineAbs) * specularColor;
+	if (shine.x >= 0.9)
+		specularPhong = vec4(0, 0, 0, 0);
+
+
+	vec4 diffuseLambert = LlightCol * clamp(dot(normalVec, LDir),0.0,1.0) * diffuseColor;
+	//vec4 diffuseLambert = vec4(0, 0, 0,1)* clamp(dot(normalVec, LDir),0.0,1.0);
+	//
+	if (dot(normalVec, LDir) <= -0.5)
+	{
+		specularPhong = vec4(0, 0, 0, 0);
+		diffuseLambert = vec4(0, 0, 0, 0);
+	}
+
+	fragmentColor =  diffuseLambert + specularPhong;
+	fragmentColor = clamp(fragmentColor, 0.0, 1.0);	
+	fragmentColor = vec4(fragmentColor.rgb, 1.0);
+
+	fragmentColor = diffuseColor;
 }
 `;
 
@@ -127,7 +207,7 @@ out vec3 norm;
 
 void main() {
 	
-	vec4 atmPos = worldToCamera * modelToWorld * vec4(1.02*in_pos, 1);
+	vec4 atmPos = worldToCamera * modelToWorld * vec4(1.04*in_pos, 1);
 	gl_Position = cameraToScreen * atmPos;
 	norm = normalize(in_pos);
 }
@@ -139,14 +219,15 @@ precision highp float;
 in vec3 norm;
 out vec4 fragmentColor ;
 uniform sampler2D u_texture;
+uniform vec3 ADir;
 
 void main ( )
 {
-	vec3 ADir = vec3(0, 1, 0);
+
 	float amBlend = (dot(norm, ADir) + 1.0) / 2.0;
-	vec4 ambientLightColor = vec4(0, 0, 1, 1);
-	vec4 ambientLightLowColor = vec4(1, 1, 0, 1);
-	vec4 ambColor = vec4(1, 1, 1, 0.5);
+	vec4 ambientLightColor = vec4(0, 0, 0, 0.0);
+	vec4 ambientLightLowColor = vec4(0, 0.0,1, 1);
+	vec4 ambColor = vec4(1, 1, 1, 0.2);
 	vec4 ambientHemi = (ambientLightColor * amBlend + ambientLightLowColor * (1.0 - amBlend)) * ambColor;                                                                                     
 	fragmentColor = ambientHemi;
 	
@@ -331,7 +412,7 @@ let context =
 			let t = this.cities.getCurrentAnchorPoint();
 			this.globe.transform.rotationLerp(t, 0.01);
 			//this.globe.transform.rotationLerp(0, 1, 0, 0.01);
-			//this.globe.transform.rotate(0, 1,1);
+			this.skybox.transform.rotate(0, 0,0.2);
 			//this.globe.transform.setRotation(0, 100,0);
 			for (let a = 0; a < this.renderObjects.length; a++)	
 			{
@@ -614,11 +695,14 @@ let context =
 			renderer.shaderProgram.texture = this.getTexture(textureName);
 			renderer.shaderProgram.parentModelToWorld = gl.getUniformLocation(renderer.shaderProgram, "parentModelToWorld");
 			renderer.shaderProgram.anchorPoint = gl.getUniformLocation(renderer.shaderProgram, "anchorPoint");
+			renderer.shaderProgram.textureLocation = gl.getUniformLocation(renderer.shaderProgram, "u_texture");
 
 			renderer.onPreRender = function(camera, renderObject)
 			{
-				this.context.gl.bindTexture(this.context.gl.TEXTURE_2D, this.shaderProgram.texture);
 				this.shaderProgram.onPreRender(camera, renderObject);
+				this.context.gl.uniform1i(this.shaderProgram.textureLocation, 0);
+				this.context.gl.activeTexture(gl.TEXTURE0);
+				this.context.gl.bindTexture(this.context.gl.TEXTURE_2D, this.shaderProgram.texture);
 
 				gl.uniformMatrix4fv(this.shaderProgram.parentModelToWorld, gl.FALSE, this.context.globe.modelToWorld());
 
@@ -684,10 +768,13 @@ let context =
 			renderer.shaderProgram.uvBuffer = this.createAndFillBufferObject(skyBoxUV, gl.ARRAY_BUFFER);
 
 
+			renderer.shaderProgram.textureLocation = gl.getUniformLocation(renderer.shaderProgram, "u_texture");
 			renderer.onPreRender = function(camera, renderObject)
 			{
-				this.context.gl.bindTexture(this.context.gl.TEXTURE_2D, this.shaderProgram.texture);
 				this.shaderProgram.onPreRender(camera, renderObject);
+				this.context.gl.uniform1i(this.shaderProgram.textureLocation, 0);
+				this.context.gl.activeTexture(gl.TEXTURE0);
+				this.context.gl.bindTexture(this.context.gl.TEXTURE_2D, this.shaderProgram.texture);
 
 				gl.bindBuffer(gl.ARRAY_BUFFER, this.shaderProgram.uvBuffer);
 				gl.vertexAttribPointer(this.shaderProgram.uvPositionAttribute, 2, gl.FLOAT, false, 0, 0);
@@ -731,6 +818,7 @@ let context =
 			}
 			renderer.shaderProgram = this.defaultShader(mesh, indices, gl.TRIANGLES, worldVertexShader, worldFragmentShader);
 			renderer.shaderProgram.texture = this.getTexture("EarthTex.png");
+			renderer.shaderProgram.reflectTexture = this.getTexture("EarthReflectionTex.png");
 
 			renderer.shaderProgram.uvPositionAttribute = gl.getAttribLocation(renderer.shaderProgram, "uv_pos");
 			renderer.shaderProgram.uvBuffer = this.createAndFillBufferObject(Earth2K.meshes[0].texturecoords[0], gl.ARRAY_BUFFER);
@@ -738,11 +826,23 @@ let context =
 			renderer.shaderProgram.normPositionAttribute = gl.getAttribLocation(renderer.shaderProgram, "norm_pos");
 			renderer.shaderProgram.normBuffer = this.createAndFillBufferObject(Earth2K.meshes[0].normals, gl.ARRAY_BUFFER);
 
+			renderer.shaderProgram.aDir = gl.getUniformLocation(renderer.shaderProgram, "ADir");
+			renderer.shaderProgram.aPos= gl.getUniformLocation(renderer.shaderProgram, "APos");
+			renderer.shaderProgram.lightType = gl.getUniformLocation(renderer.shaderProgram, "AlightType");
+			renderer.shaderProgram.eyePosLocation = gl.getUniformLocation(renderer.shaderProgram, "eyePos");
+
+			renderer.shaderProgram.textureLocation = gl.getUniformLocation(renderer.shaderProgram, "u_texture");
+			renderer.shaderProgram.reflectTextureLocation = gl.getUniformLocation(renderer.shaderProgram, "u_ReflectTexture");
 
 			renderer.onPreRender = function(camera, renderObject)
 			{
-				this.context.gl.bindTexture(this.context.gl.TEXTURE_2D, this.shaderProgram.texture);
 				this.shaderProgram.onPreRender(camera, renderObject);
+				this.context.gl.uniform1i(this.shaderProgram.textureLocation, 0);
+				this.context.gl.uniform1i(this.shaderProgram.reflectTextureLocation, 1);
+				this.context.gl.activeTexture(gl.TEXTURE0);
+				this.context.gl.bindTexture(this.context.gl.TEXTURE_2D, this.shaderProgram.texture);
+				this.context.gl.activeTexture(gl.TEXTURE1);
+				this.context.gl.bindTexture(this.context.gl.TEXTURE_2D, this.shaderProgram.reflectTexture);
 
 				gl.bindBuffer(gl.ARRAY_BUFFER, this.shaderProgram.uvBuffer);
 				gl.vertexAttribPointer(this.shaderProgram.uvPositionAttribute, 2, gl.FLOAT, false, 0, 0);
@@ -751,6 +851,16 @@ let context =
 				gl.bindBuffer(gl.ARRAY_BUFFER, this.shaderProgram.normBuffer);
 				gl.vertexAttribPointer(this.shaderProgram.normPositionAttribute, 3, gl.FLOAT, false, 0, 0);
 				gl.enableVertexAttribArray(this.shaderProgram.normPositionAttribute);
+				let lightDir = this.context.skybox.lightDir();
+				gl.uniform3f(this.shaderProgram.aDir, lightDir[0], lightDir[1], lightDir[2] );
+
+				let lightPos = this.context.skybox.getSun();
+				gl.uniform3f(this.shaderProgram.aPos, lightPos[0], lightPos[1], lightPos[2] );
+
+				let eyePos = this.context.camera.transform.translation;
+				gl.uniform3f(this.shaderProgram.eyePosLocation, eyePos[0], eyePos[1], eyePos[2] );
+
+				gl.uniform4f(this.shaderProgram.lightType, 1,0, 0, 0);
 
 			}
 
@@ -788,11 +898,15 @@ let context =
 					mesh[i+b] = mesh[i+b]/l;
 			}
 			renderer.shaderProgram = this.defaultShader(mesh, indices, gl.TRIANGLES, atmosphereVertexShader, atmFragmentShader);
+			renderer.shaderProgram.aDir = gl.getUniformLocation(renderer.shaderProgram, "ADir");
 
 			renderer.onPreRender = function(camera, renderObject)
 			{
 				this.context.gl.bindTexture(this.context.gl.TEXTURE_2D, this.shaderProgram.texture);
 				this.shaderProgram.onPreRender(camera, renderObject);
+				let lightDir = this.context.skybox.lightDir();
+				gl.uniform3f(this.shaderProgram.aDir, lightDir[0], lightDir[1], lightDir[2] );
+
 
 			}
 

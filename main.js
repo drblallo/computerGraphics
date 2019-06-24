@@ -44,24 +44,30 @@ function main()
 
 	context.globe = new renderObject.MakeRenderObject(context, context.worldRenderer(), null);
 	context.cities = new CityList.makeCityList(context);
-	let grid = new renderObject.MakeRenderObject(context, context.gridRenderer(), null);
-	context.camera.transform.translate(0, 1, 4);
+	//let grid = new renderObject.MakeRenderObject(context, context.gridRenderer(), null);
+	context.camera.transform.translate(0, 0, 4);
 
 	context.globe.transform.setScale(3, 3, 3);
 
 	context.skybox = new renderObject.MakeRenderObject(context, context.skyBoxRenderer(), context.globe);
-	context.skybox.transform.setScale(10, 10, 10);
+	context.skybox.transform.setScale(5, 5, 5);
 
 	context.skybox.getSun = function()
 	{
-		return utils.multiplyMatrixVector(context.transform.toMatrix(), [0.3, 0.6, 1]);
+		let v = utils.multiplyMatrixVector(utils.transposeMatrix(this.transform.toMatrix()), [0.3, 0.25, 1, 1]);
+		return v;
+	}
+	context.skybox.lightDir = function()
+	{
+		let v = this.getSun();
+		v = [-1*v[0], -1*v[1], -1*v[2]];
+		//v = [0,0,-1]; 
+		v = utils.normalizeVector(v);
+		return v;
 	}
 
 	let atm = new renderObject.MakeRenderObject(context, context.atmRenderer(), null);
 	atm.transform.setScale(3, 3, 3);
-	//atm.transform.setTranslation(3, 6, 10);
-	//context.camera.transform.setTranslation(0, 5, 5);
-	//context.camera.transform.rotate(0, 0, 180);
 
 
 	context.draw();

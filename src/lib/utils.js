@@ -102,9 +102,13 @@ let utils = {
 	normalizeVector: function(v)
 	{
 		let abs = 0;
-		for (let b = 0; b < v.length(); b++)
+		let toReturn = [];
+		for (let b = 0; b < v.length; b++)
 			abs += v[b]*v[b];
-		return Math.sqrt(abs);
+		abs = Math.sqrt(abs);
+		for (let b = 0; b < v.length; b++)
+			toReturn.push( v[b]/abs); 
+		return toReturn;
 	},
 
 	radToDeg: function(angle){
