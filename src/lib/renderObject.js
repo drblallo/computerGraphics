@@ -70,7 +70,7 @@ let renderObject = {
     	if (this.renderer.isTransparent) {
     		return this.transform.translation[2];
 			}
-    		return this.transform.distanceFrom(other.transform);
+			return this.transform.distanceFrom(other.transform);
     }
     this.setPixelLocation = function(x,y,z) {
 			this.transform.setTranslation(

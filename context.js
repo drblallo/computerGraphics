@@ -111,6 +111,7 @@ uniform vec3 ADir;
 uniform vec4 AlightType;
 uniform vec3 APos;
 uniform vec3 eyePos;
+uniform vec4 specularColor;
 
 vec3 compLightDir(vec3 LPos, vec3 LDir, vec4 lightType) {
 	//lights
@@ -152,8 +153,8 @@ vec4 compLightColor(vec4 lightColor, float LTarget, float LDecay, vec3 LPos, vec
 
 void main ( )
 {
-	float LAConeOut =10.0;
-	float LAConeIn = 5.0;
+	float LAConeOut =3.0;
+	float LAConeIn = 2.0;
 	float LADecay = 0.0;
 	float LATarget = 61.0;
 	vec4 LAlightColor = vec4(1, 1, 1, 1);
@@ -167,7 +168,6 @@ void main ( )
 	vec3 normalVec = normalize(worldPosition);
 	vec3 eyedirVec = normalize(eyePos - worldPosition);
 
-	vec4 specularColor = vec4(0.6, 0.6, 1, 1);
 	vec3 reflection = -reflect(LDir, normalVec);
 	vec3 shine = texture(u_ReflectTexture, uv).xyz;
 	float shineAbs = (1.0-shine.x)*100.0;
@@ -188,8 +188,6 @@ void main ( )
 	fragmentColor =  diffuseLambert + specularPhong;
 	fragmentColor = clamp(fragmentColor, 0.0, 1.0);	
 	fragmentColor = vec4(fragmentColor.rgb, 1.0);
-
-	fragmentColor = diffuseColor;
 }
 `;
 
@@ -220,14 +218,14 @@ in vec3 norm;
 out vec4 fragmentColor ;
 uniform sampler2D u_texture;
 uniform vec3 ADir;
+uniform vec4 ambColor;
 
 void main ( )
 {
 
 	float amBlend = (dot(norm, ADir) + 1.0) / 2.0;
 	vec4 ambientLightColor = vec4(0, 0, 0, 0.0);
-	vec4 ambientLightLowColor = vec4(0, 0.0,1, 1);
-	vec4 ambColor = vec4(1, 1, 1, 0.2);
+	vec4 ambientLightLowColor = vec4(0, 0, 1, 1);
 	vec4 ambientHemi = (ambientLightColor * amBlend + ambientLightLowColor * (1.0 - amBlend)) * ambColor;                                                                                     
 	fragmentColor = ambientHemi;
 	
@@ -389,6 +387,8 @@ const index =
 		4, 3, 5
 	]
 
+
+
 let context = 
 {
 	makeContext: function(gl, width, height){
@@ -400,6 +400,11 @@ let context =
 		this.transparentRenderObject = [];
 		this.uiObjects = [];
 		this.camera = new camera.MakeCamera(width, height);
+		this.lChoice = [1,0,0,0];
+		this.ambFlag = true;
+		this.ambientOnOff = [1,1,1,0.2];
+		this.specFlag = true;
+		this.specOnOff = [0.6, 0.6, 1, 1];
 
 	this.draw = function ()
 	{
@@ -461,6 +466,24 @@ let context =
 			let otherMe = this; 
 			window.requestAnimationFrame(function(){otherMe.draw();});
 		}
+
+		this.setLightChoice = function(index){
+			if (index==0) this.lChoice = [1,0,0,0];
+			else if (index==1) this.lChoice = [0,1,0,0];
+			else if (index==2) this.lChoice = [0,0,1,0];
+		};
+
+		this.setAmbient = function() {
+			if(this.ambFlag) this.ambientOnOff = [0,0,0,0.2];
+			else this.ambientOnOff = [1,1,1,0.2];
+			this.ambFlag = !this.ambFlag;
+		};
+
+		this.setSpecular = function() {
+			if(this.specFlag) this.specOnOff = [0,0,0,1];
+			else this.specOnOff = [0.6, 0.6, 1, 1];
+			this.specFlag = !this.specFlag;
+		};
 
 		this.makeShader = function(code, shaderType)
 		{
@@ -830,6 +853,8 @@ let context =
 			renderer.shaderProgram.aPos= gl.getUniformLocation(renderer.shaderProgram, "APos");
 			renderer.shaderProgram.lightType = gl.getUniformLocation(renderer.shaderProgram, "AlightType");
 			renderer.shaderProgram.eyePosLocation = gl.getUniformLocation(renderer.shaderProgram, "eyePos");
+			renderer.shaderProgram.specColor = gl.getUniformLocation(renderer.shaderProgram, "specularColor");
+
 
 			renderer.shaderProgram.textureLocation = gl.getUniformLocation(renderer.shaderProgram, "u_texture");
 			renderer.shaderProgram.reflectTextureLocation = gl.getUniformLocation(renderer.shaderProgram, "u_ReflectTexture");
@@ -860,7 +885,10 @@ let context =
 				let eyePos = this.context.camera.transform.translation;
 				gl.uniform3f(this.shaderProgram.eyePosLocation, eyePos[0], eyePos[1], eyePos[2] );
 
-				gl.uniform4f(this.shaderProgram.lightType, 1,0, 0, 0);
+				gl.uniform4f(this.shaderProgram.lightType, this.context.lChoice[0],this.context.lChoice[1],
+					this.context.lChoice[2], this.context.lChoice[3]);
+				gl.uniform4f(this.shaderProgram.specColor, this.context.specOnOff[0], this.context.specOnOff[1],
+					this.context.specOnOff[2], this.context.specOnOff[3]);
 
 			}
 
@@ -899,6 +927,7 @@ let context =
 			}
 			renderer.shaderProgram = this.defaultShader(mesh, indices, gl.TRIANGLES, atmosphereVertexShader, atmFragmentShader);
 			renderer.shaderProgram.aDir = gl.getUniformLocation(renderer.shaderProgram, "ADir");
+			renderer.shaderProgram.ambColor = gl.getUniformLocation(renderer.shaderProgram, "ambColor");
 
 			renderer.onPreRender = function(camera, renderObject)
 			{
@@ -906,7 +935,8 @@ let context =
 				this.shaderProgram.onPreRender(camera, renderObject);
 				let lightDir = this.context.skybox.lightDir();
 				gl.uniform3f(this.shaderProgram.aDir, lightDir[0], lightDir[1], lightDir[2] );
-
+				gl.uniform4f(this.shaderProgram.ambColor, this.context.ambientOnOff[0], this.context.ambientOnOff[1],
+					this.context.ambientOnOff[2], this.context.ambientOnOff[3]);
 
 			}
 

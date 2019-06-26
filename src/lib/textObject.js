@@ -71,13 +71,13 @@ let TextObject =
 			ogg.text = this.makeTextObject(text, context);
 			ogg.star = new renderObject.MakeRenderObject(context, context.uiRenderer("star.png"), null);
 			ogg.star.setPixelScale(32,32);
-			ogg.backgound.setPixelScale(300,180);
+			ogg.backgound.setPixelScale(350,233);
 			ogg.setTranslation = function(x, y)
 			{
 				ogg.star.setPixelLocation(x, y, 0);
-				ogg.backgound.setPixelLocation(x, y - 108,-1);
-				ogg.name.setTranslation(x - 130, y - 36, -3);
-				ogg.text.setTranslation(x - 130, y - 64, -3);
+				ogg.backgound.setPixelLocation(x, y - 133,-1);
+				ogg.name.setTranslation(x - 153, y - 36, -3);
+				ogg.text.setTranslation(x - 153, y - 64, -3);
 			};
 			ogg.getAnchorPoint = function(){
 				return ogg.star.getAnchorPoint();

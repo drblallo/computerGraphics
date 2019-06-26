@@ -8,12 +8,36 @@
 	
 	<body style="background-color: grey;" onLoad="window.mainFunction();">
 		<div>
-			<canvas id="my-canvas" width='600' height='600' style="background-color: white; position: relative">
+			<div class="menu menu1">
+				<h1 align="center" style="color: #D3280D; ">3D World</h1>
+				<h2 align="center" style="color: lightgrey;">Change the lights!</h2>
+				<div class="button-container">
+					<button onclick="changeLight(0)">
+						Direct light
+					</button>
+					<button onclick="changeLight(1)">
+						Point light
+					</button>
+					<button onclick="changeLight(2)">
+						Spot light
+					</button>
+					<h3 style="color: lightgrey;">Ambient</h3>
+					<label class="switch">
+						<input type="checkbox" onchange="ambientToggled()" checked>
+						<span class="slider round"></span>
+					</label>
+					<h3 style="color: lightgrey;">Specular</h3>
+					<label class="switch">
+						<input type="checkbox" onchange="specularToggled()" checked>
+						<span class="slider round"></span>
+					</label>
+				</div>
+			</div>
+			<canvas id="my-canvas" width='600' height='600' style="background-color: white; position: relative; display: inline">
 				Your browser doesn't support the Canvas Element!
 			</canvas>
-			<span class="menu">
-				<h1 align="center" style="color: #D3280D; ">3D World</h1>
-				<h2 align="center" style="color: lightgrey;">Pick a city!</h2>
+			<div class="menu">
+				<h2 align="center" style="color: lightgrey; margin-top: 80px;">Pick a city!</h2>
 				<div class="button-container">
 					<button onclick="cityClicked(0)">
 						New York
@@ -36,7 +60,7 @@
 					</button>
 					<div id="city5"></div>
 				</div>
-			</span>
+			</div>
 		</div>
 	</body>
 

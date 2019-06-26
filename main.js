@@ -9,19 +9,31 @@ let gl;
 
 let context;
 
-function removeSeeMore() {
+function removeSeeCard() {
 	let elem = document.getElementById('dummy');
 	if (elem != null)
 		elem.parentNode.removeChild(elem);
 }
 
 function cityClicked(index){
-	removeSeeMore();
+	removeSeeCard();
 	document.getElementById("city"+(index+1)).innerHTML = '<button id="dummy" class = "see-more" onclick="seeCard()">See more</button>';
 	context.cities.setCurrentCity(index);
 }
 function seeCard() {
 	context.cities.showCurrentCityText(true);
+}
+
+function changeLight(index){
+	context.setLightChoice(index);
+}
+
+function ambientToggled() {
+	context.setAmbient();
+}
+
+function specularToggled() {
+	context.setSpecular();
 }
 
 function main()
@@ -76,3 +88,6 @@ function main()
 window.mainFunction = main;
 window.cityClicked = cityClicked;
 window.seeCard = seeCard;
+window.changeLight = changeLight;
+window.ambientToggled = ambientToggled;
+window.specularToggled = specularToggled;
